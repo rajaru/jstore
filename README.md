@@ -1,0 +1,2 @@
+# jstore
+JSON Indexed store
