@@ -1,0 +1,7 @@
+{
+    "key": "P001",
+    "quote_id" : "Q001",
+    "producer" : "A broker",
+    "age": 32,
+    "premium"  : 100.10
+}

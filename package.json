@@ -1,0 +1,16 @@
+{
+  "name": "jstore",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "nyc --reporter=lcov --reporter=html mocha"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fastify": "^2.14.1",
+    "fastify-multipart": "^1.0.6",
+    "fastify-static": "^2.7.0"
+  }
+}

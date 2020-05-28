@@ -1,0 +1,13 @@
+{
+    "key": 2,
+    "a": "Hello",
+    "b": "Welcome to jStore",
+    "c": {
+        "d": "Sub",
+        "c": "sub long value",
+        "a": {
+            "b": "Super sub"
+        }
+    },
+    "d": ["Hello", "There", "Howdy"]
+}

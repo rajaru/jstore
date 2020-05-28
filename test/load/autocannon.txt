@@ -1,0 +1,4 @@
+0x --output-dir z:\\temp\\profile index.js
+autocannon -c 10 -m "POST" -i test/load/body.json -H "Content-Type: application/json" http://127.0.0.1:8080/index
+
+autocannon -c 10 "http://127.0.0.1:8080/pkey?.quote_id=Q0000001"

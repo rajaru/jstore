@@ -1,0 +1,8 @@
+{
+    ".a": {"2":"Hello"},
+    ".c": {"2": null},
+    ".c.d": {"2":"Sub"},
+    ".c.c": {"2":"sub long value"},
+    ".c.a.b": {"2":"Super sub"},
+    ".d.@": {"2":"[\"Hello\",\"There\",\"Howdy\"]"}
+}

@@ -1,0 +1,6 @@
+body {font-size: 12px;}
+table { border-top: 1px solid #ddd;}
+table tr td {text-align: center; padding: 5px 5px; vertical-align: top;}
+.leaf {border: 1px solid #aaa; color: #00a; min-width: 80px; padding: 0px 0px; border-collapse: collapse;}
+.non-leaf {margin-right: 20px;}
+.leaf td { background-color: #eef; padding: 6px 15px;}
