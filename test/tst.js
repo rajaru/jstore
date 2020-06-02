@@ -1,11 +1,12 @@
 const jindex = require('../src/jindex');
+const fs = require('fs');
 /*
 if( fs.existsSync('z:\\temp\\jstr.idx') )
     fs.unlinkSync('z:\\temp\\jstr.idx');
 if( fs.existsSync('z:\\temp\\jstr2.idx') )
     fs.unlinkSync('z:\\temp\\jstr2.idx');
 
-var st = new store({folder: 'z:\\temp', M: 4, keylen: 12});
+var st = new store({folder: 'z:\\temp', M: 4, keylen: 16});
 
 var bt = new btree(st);
 bt.put('a', 'there');
@@ -55,9 +56,14 @@ var json = {
         }
     }
 };
-var ji = new jindex('policy_id');
-ji.index(json, json['policy_id']);
+fs.rmdirSync('z:\\temp\\jstrunit', { recursive: true });
+var ji = new jindex('z:\\temp\\jstrunit');
+ji.index(json, 'policy_id');
+var ret = ji.get('.quote.quote_id', 'Q0001');
+var ret = ji.get('.quote.data.broker_name', null, 'p00001');
+console.log(ret);
 */
+
 /*
 var st = new store({M: 4, folder: "z:\\temp\\jstr", prefix: 'primary', unique: true});
 var bt = new bptree(st);

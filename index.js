@@ -35,6 +35,21 @@ fastify.get('/walk', async (req, res) => {
     res.send({ status: 0, data: ji.walk(req.query.path, +req.query.primary) });
 });
 
+fastify.post('/objects', async (req, res) => {
+    var jpaths=req.body.fields.split(',');
+    var pkeys =req.body.pkeys.split(',');
+    const ji = new jindex(folder, true);    //read mode
+    const resp = {};
+    for(var pkey of pkeys )resp[pkey] = {};
+    for(var jpath of jpaths){
+        for(var pkey of pkeys ){
+            resp[pkey][jpath] = ji.get(jpath, null, pkey);
+        }
+    }
+    res.send({ status: 0, data: resp });
+});
+
+
 fastify.register(require('fastify-multipart'), {addToBody: true, limits: {fileSize: maxsize, files: 1} });
 fastify.post('/index', async (req, res) => {
     const ji = new jindex(folder, false);    //write mode

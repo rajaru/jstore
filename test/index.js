@@ -1,9 +1,12 @@
 const fs    = require('fs');
 const path  = require('path');
-const store = require('../src/store');
+const keystore = require('../src/keystore');
 const bptree= require('../src/bptree');
 const jindex= require('../src/jindex');
+const jpath = require('../src/jpathindex');
 const assert = require( "assert" );
+
+process.env.M = 4;
 
 const basepath="z:\\temp\\jstrunit";
 const bpidxfile=path.join(basepath, 'primary.idx');
@@ -19,8 +22,9 @@ async function wait(ms){
     });
 }
 
-var st = null;
-var nst= null;
+var keyst   = null;
+var st      = null;
+var nst     = null;
 before(()=>{
     if( fs.existsSync(basepath) )fs.rmdirSync(basepath, {recursive: true});
     wait(1000);
@@ -31,8 +35,9 @@ before(()=>{
     if( fs.existsSync(bpnumdatfile) )fs.unlinkSync(bpnumdatfile);
 
     // create a new store with unique index
-    st = new store({folder: basepath, unique: true});
-    nst = new store({M: 4, folder: basepath, prefix: 'numeric', unique: true});
+    keyst = new keystore({M:4, keylen: 16, basepath: basepath});
+    st = keyst._get_store('primary', true); // new store({folder: basepath, unique: true});
+    nst = keyst._get_store('value', false); // new store({M: 4, folder: basepath, prefix: 'numeric', unique: true});
 });
 
 describe( "b+ tree", () => {
@@ -89,20 +94,65 @@ describe( "b+ tree", () => {
     });
 
     it("reopen", ()=>{
-        st._close();
-        st._close();    //redundant should not fail
-        st = new store({M: 4, folder: basepath, prefix: 'primary', unique: true});
+        keyst._close();
+        keyst._close();    //redundant should not fail
+        keyst = new keystore({M:4, keylen: 16, basepath: basepath});
+        st = keyst._get_store('primary', true); // new store({folder: basepath, unique: true});
+        nst = keyst._get_store('value', false); // new store({M: 4, folder: basepath, prefix: 'numeric', unique: true});
+    
+        // st._close();
+        // st._close();    //redundant should not fail
+        // st = new store({M: 4, folder: basepath, prefix: 'primary', unique: true});
         var bp = new bptree(st);
         var ret = bp.walk();
         assert(ret.length==33, 'Expected 33 elements in B+Tree, found '+ret.length);
     });
 
-    it('readonly', ()=>{
-        var nst = new store({M: 4, folder: basepath, prefix: 'rtest', unique: true, reader: true});
-        assert( !fs.existsSync(path.join(basepath, 'rtest.idx') ), "rtest.idx must not exists" );
-        assert( !fs.existsSync(path.join(basepath, 'rtest.dat') ), "rtest.dat must not exists" );
-    })
+    it('readonly', async ()=>{
+        fs.rmdirSync(basepath+'x', {recursive: true});
+        fs.rmdirSync(basepath+'y', {recursive: true});
+        await wait(1000)
+        var nst = null;
+        assert.throws( ()=>{nst = new keystore({M: 4, basepath: basepath+'x', unique: true, reader: true})}, Error, 'Expected exception');
+        
+        if(!fs.existsSync(basepath+'y'))fs.mkdirSync(basepath+'y');
+        assert.throws( ()=>{nst = new keystore({M: 4, basepath: basepath+'y', unique: true, reader: true})}, Error, 'Expected exception');
 
+        fs.writeFileSync(path.join(basepath+'y', 'paths.json'), '{}');
+        assert.throws( ()=>{nst = new keystore({M: 4, basepath: basepath+'y', unique: true, reader: true})}, Error, 'Expected exception');
+        // assert.throws( ()=>{var sst = nst._get_store('test', true);}, Error, 'Expected exception');
+
+        // var rst = nst._get_store('rtest', true);
+        assert( !fs.existsSync(path.join(basepath, 'rtest.bin') ), "rtest.bin must not exists" );
+        assert( !fs.existsSync(path.join(basepath, 'rtest.dat') ), "rtest.dat must not exists" );
+
+        
+        
+        
+    });
+
+    it('readonly-compact', async ()=>{
+        fs.rmdirSync(basepath+'z', {recursive: true});
+        
+        var nst = new keystore({basepath: basepath+'z', unique: true});
+        await wait(500);
+        nst._close();
+
+        var ji = new jindex(basepath+'z', true);
+        assert.throws( ()=>{ji.get('.b.c.d', 'Test')}, Error, "Expected exception");
+
+        await wait(500);
+        var nst = new keystore({basepath: basepath+'z', unique: true, reader: true});
+        nst._compact();
+    });
+
+    it('multikey', ()=>{
+        var ast = keyst._get_store('another', true);
+        var bp = new bptree(ast);
+        bp.put('a', 'Test');
+        assert(bp.get('a')=='Test', 'Expected Test');
+    });
+    
 });
 
 describe( "b+ tree numeric", () => {
@@ -122,6 +172,9 @@ describe( "b+ tree numeric", () => {
     it("get with string key", ()=>{
         var bp = new bptree(nst);
         assert( bp.get("a10") == null, "Expected '0', found " );
+    });
+    it("get with empty string key", ()=>{
+        var bp = new bptree(nst);
         assert( bp.get("") == null, "Expected '0', found " );
     });
 
@@ -162,6 +215,7 @@ describe( "json index", () => {
         if( filters.length>0 && filters.indexOf(file)<0 )return;
         add_json(file);
     });
+    
     it("clean", ()=>{
         var ji = new jindex(basepath);
         ji._clean();
@@ -175,7 +229,7 @@ describe( "json index", () => {
             }
         });
     });
-
+    
     it("non-unique ", ()=>{
         var ji = new jindex(basepath);
         var ret = ji.get('.quote_id', 'Q001');
@@ -202,11 +256,15 @@ describe( "json index", () => {
         var ret = ji.get('.premium', '100.1');
         assert(ret=="[\"P001\",\"P00000003\"]", "Expected two key P001,P00000003, got", ret)
 
-        var ret = ji.get('.random', '100.1');
-        assert(ret==null, "Expected null, got", ret)
-        
-        var ret = ji.index({random: 'hello'});
-        assert(ret==null, "Expected null, got", ret)
+        assert.throws( ()=>{ji.get('.random', '100.1')}, Error, 'Expected error');
+        ji.index({'.random': 'hello'});
+    });
+
+    it("read-object ", ()=>{
+        var ji = new jindex(basepath, true);
+        var resp =  {};
+        ji.values('.quote_id', ['P00000003','P001'], resp);
+        console.log(resp);
     });
 
     it("json walk ", ()=>{
@@ -218,4 +276,27 @@ describe( "json index", () => {
         var ji = new jindex(basepath);
         assert(ji.index({test: 'Test'})==null, "Allows non-primary key index");
     });
+});
+
+describe( "manage store", () => {
+    it("compact ", ()=>{
+        jpath._compact();
+    });
+    it("read-after-compact ", ()=>{
+        var ji = new jindex(basepath, true);
+        var ret = ji.get('.quote_id', 'Q001');
+        assert(ret=="P001", "Expected single key P001, found ", ret);
+
+        var ret = ji.get('.producer', 'a broker');
+        assert(ret=="[\"P001\",\"P002\"]", "Expected two key P001,P002")
+
+        var ret = ji.get('.premium', '100.1');
+        assert(ret=="[\"P001\",\"P00000003\"]", "Expected two key P001,P00000003, got", ret)
+
+        assert.throws( ()=>{ji.get('.random', '100.1')}, Error, 'Expected exception');
+        
+        var ret = ji.index({random: 'hello'});
+        assert(ret==null, "Expected null, got", ret)
+    });
+
 });

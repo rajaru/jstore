@@ -2,5 +2,6 @@
     "key": "P00000003",
     "quote_id" : "Q003",
     "producer" : "Another broker",
-    "premium"  : 100.10
+    "premium"  : 100.10,
+    "splitter": "A"
 }

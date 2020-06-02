@@ -19,7 +19,9 @@ class jindex{
         if( node instanceof Array )
             for(var m of node)this.jpath(m, prefix+'.@');
         else if( typeof node == 'object' )
-            for(var n in node)this.jpath(node[n], prefix+'.'+n);
+            for(var n in node){
+                if(n.charAt(0)<'0' || n.charAt(0)>'9')this.jpath(node[n], prefix+'.'+n);
+            }
         else{
             if( this.jpaths.hasOwnProperty(prefix) ){
                 if( !(this.jpaths[prefix] instanceof Array) )this.jpaths[prefix] = [this.jpaths[prefix]]
@@ -44,6 +46,12 @@ class jindex{
         var jp = new jpath((path||'').toLowerCase(), this.basefolder, this.reader);
         return jp.get(value, pkey);
     }
+
+    values(path, pkeys, resp){
+        var jp = new jpath((path||'').toLowerCase(), this.basefolder, this.reader);
+        jp.values(pkeys, resp, path);
+    }
+
     
     walk(path, primary){
         var jp = new jpath((path||'').toLowerCase(), this.basefolder, this.reader);

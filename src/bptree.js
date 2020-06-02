@@ -17,9 +17,10 @@ class leaf extends bnode {}
 
 class bptree{
     constructor(store){
+        if(!store)throw Error('Invalid store');
         this.store  = store;
         this.keylen = this.store.keylen;
-        this.keytype= this.store.keytype;
+        // this.keytype= this.store.keytype;
         this.M      = this.store.M;
         this.block  = this.store.block;
         this.reclen = this.keylen + 12;
@@ -55,12 +56,35 @@ class bptree{
         root = root || this.root;
         if( root instanceof leaf )return root;    // located the leaf node
         const uint8 = root.uint8();
-        for(var offset=16; offset<this.block && uint8[offset]!=0xff; offset+=this.reclen){
-            if( this.store._compare(uint8, offset, keyb, 0, this.keylen) > 0 ){ //drill down the left branch
-                var idx = root.getUint32(offset +this.keylen);
-                return this._find_leaf(keyb, this._load_node(idx, root.idx));
-            }
+
+        var bf = this._bin_search_closest(uint8, keyb, root.count);
+        if( bf != 16+root.count*this.reclen ){
+            var idx = root.getUint32(bf +this.keylen);
+            return this._find_leaf(keyb, this._load_node(idx, root.idx));
         }
+
+        // var bf = this._bin_search_closest(uint8, keyb, root.count);
+        // for(var offset=16; offset<this.block && uint8[offset]!=0xff; offset+=this.reclen){
+        //     if( this.store._compare(uint8, offset, keyb, 0, this.keylen) > 0 ){ //drill down the left branch
+        //         if( bf != offset )console.log('expected ... ', bf, offset, Buffer.from(keyb).toString() );
+        //         var idx = root.getUint32(offset +this.keylen);
+        //         return this._find_leaf(keyb, this._load_node(idx, root.idx));
+        //     }
+        // }
+        // if( bf != 16+root.count*this.reclen ){
+        //     console.log(this.keytype==0?new DataView(uint8.slice(16, 16+this.keylen)).getFloat64() : Buffer.from(uint8.slice(16, 16+this.keylen)).toString());
+        //     console.log(keyb instanceof Uint8Array ? Buffer.from(keyb).toString() : keyb);
+        //     console.log('expected: ', 16+root.count*this.reclen, ' got', bf, root.count, offset);
+        // }
+
+        // for(var offset=16; offset<this.block && uint8[offset]!=0xff; offset+=this.reclen){
+        //     if( this.store._compare(uint8, offset, keyb, 0, this.keylen) > 0 ){ //drill down the left branch
+        //         var idx = root.getUint32(offset +this.keylen);
+        //         return this._find_leaf(keyb, this._load_node(idx, root.idx));
+        //     }
+        // }
+
+
         return this._find_leaf(keyb, this._load_node(root.right, root.idx));     // must be in the right child
     }
 
@@ -71,14 +95,26 @@ class bptree{
 
     _add_to_non_leaf_node(pnode, keyb, lnode, rnode){
         const uint8 = pnode.uint8();
-        for(var offset=16; offset<this.block; offset+=this.reclen)
-            if( this.store._compare(uint8, offset, keyb, 0, this.keylen) > 0 )
-                return this._set_key_at(pnode, offset, keyb, lnode.idx, rnode.idx, uint8[offset] == 0xff ); // islast?
+        var offset = this._bin_search_closest(uint8, keyb, pnode.count);
+        return this._set_key_at(pnode, offset, keyb, lnode.idx, rnode.idx, uint8[offset] == 0xff ); // islast?
+
+        // var bf = this._bin_search_closest(uint8, keyb, pnode.count);
+        // for(var offset=16; offset<this.block; offset+=this.reclen)
+        //     if( this.store._compare(uint8, offset, keyb, 0, this.keylen) > 0 ){
+        //         if( bf != offset )console.log('add non leaf: ', bf, offset);
+        //         return this._set_key_at(pnode, offset, keyb, lnode.idx, rnode.idx, uint8[offset] == 0xff ); // islast?
+        //     }
+
+        // for(var offset=16; offset<this.block; offset+=this.reclen)
+        //     if( this.store._compare(uint8, offset, keyb, 0, this.keylen) > 0 ){
+        //         return this._set_key_at(pnode, offset, keyb, lnode.idx, rnode.idx, uint8[offset] == 0xff ); // islast?
+        //     }
+
     }
 
     _split(node){
         const isleaf = node instanceof leaf;
-        const lbuffer = node.uint8();
+        const lbuffer= node.uint8();
         const midoff = 16 + Math.ceil(this.M/2) * this.reclen;
         const midkey = lbuffer.slice(midoff, midoff+this.keylen);
         const keyidx = node.getUint32(midoff+this.keylen);
@@ -141,23 +177,80 @@ class bptree{
     }
 
     put(key, value){
-        // console.log('put:', key, value);
+        key = key || 0;
+        if( this.store.keytype == 0 && Number(key) != +key ){
+            this.store.convert_to_string((keys)=>{
+                this.parents = {};
+                this.root = this._load_node(this.store.root(), -1);
+                // console.log('par:', this.parents);
+                for(var key in keys)this.put(key, keys[key]);
+            });
+        }
         const keyb = this.store.keyb(key, this);
         this._add_leaf(this._find_leaf(keyb), keyb, value);
+    }
+
+    _bin_search_closest(ui8, keyb, count){
+        let left = 0, right = count;
+        let ret = -1;
+        while(left <= right ){
+            let mid = ((left+right) / 2 >> 0 );
+            let cmp = this.store._compare(ui8, 16+mid*this.reclen, keyb, 0, this.keylen);
+            if( cmp <= 0 ){
+                left = mid + 1;
+            }
+            else{
+                ret = mid;
+                right = mid - 1;
+            }
+        }
+        //return ret>=count ? -1 : 16+ret*this.reclen;
+        return 16+ret*this.reclen;
+    }
+
+
+    _bin_search_match(ui8, keyb){
+        let count = (this.block-16) / this.reclen;
+        let left = 0, right = count;
+        while(left <= right ){
+            let mid = ((left+right) / 2 >> 0 );
+            let cmp = this.store._compare(ui8, 16+mid*this.reclen, keyb, 0, this.keylen);
+            if( cmp == 0 )return mid;
+            if( cmp < 0 ){
+                left = mid + 1;
+            }
+            else{
+                right = mid - 1;
+            }
+        }
+        return -1;
     }
 
     get(key){
         // console.log('get:', key);
         const keyb = this.store.keyb(key);
-        var leaf = this._find_leaf(keyb);
-        var uint8 = leaf.uint8();
-        for(var offset=16; offset<this.block; offset+=this.reclen){
-            if( uint8[offset] == 0xff )break;
-            if( this.store._compare(uint8, offset, keyb, 0, this.keylen) == 0 ){
-                return this.store.get_rec(uint8, offset);
-            }
-        }
-        return null;
+        const uint8 = this._find_leaf(keyb).uint8();
+        const bf = this._bin_search_match(uint8, keyb);
+        return bf == -1 ? null : this.store.get_rec(uint8, 16 + bf*this.reclen);
+
+
+        // const bf = this._bin_search_match(uint8, keyb);
+        // for(var offset=16; offset<this.block; offset+=this.reclen){
+        //     if( uint8[offset] == 0xff )break;
+        //     if( this.store._compare(uint8, offset, keyb, 0, this.keylen) == 0 ){
+        //         if( bf != (offset-16)/this.reclen )console.log('** fund ', bf, (offset-16)/this.reclen );
+        //         return this.store.get_rec(uint8, offset);
+        //     }
+        // }
+        // if( bf != -1 )console.log('not found ', bf);
+
+        // for(var offset=16; offset<this.block; offset+=this.reclen){
+        //     if( uint8[offset] == 0xff )break;
+        //     if( this.store._compare(uint8, offset, keyb, 0, this.keylen) == 0 ){
+        //         return this.store.get_rec(uint8, offset);
+        //     }
+        // }
+        // return null;
     }
 
     html(node){

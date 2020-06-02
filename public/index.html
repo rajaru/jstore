@@ -42,6 +42,16 @@
             <div><input id="jvalue2" type="text"></div>
             <div><button onclick="get_(0)">Values</button></div>
         </div>
+
+        <div class="gwrap">
+            <div style="font-size: 9pt;">Fields</div>
+            <div style="font-size: 9pt;">Keys</div>
+            <div></div>
+            <div><input id="fields" type="text"></div>
+            <div><input id="pkeys" type="text"></div>
+            <div><button onclick="objects()">Values</button></div>
+        </div>
+
         <br>
         Result:
         <div style="padding-top: 5px;" id="res"></div>
@@ -87,6 +97,18 @@ function upload_json(){
             seterr('indexed: '+resp.status);
         }
     });
-
+}
+function objects(){
+    const data = {fields: $('#fields').val(), pkeys: $('#pkeys').val()};
+    console.log('send:', data);
+    seterr('extracting...');
+    $.ajax({url: '/objects', type: 'POST', data: JSON.stringify(data), 
+        contentType: "application/json;",
+        dataType: "json",
+        success: function(resp){
+            console.log(resp);
+            seterr('obejcts: '+JSON.stringify(resp.data));
+        }
+    });
 }
 </script>

@@ -3,5 +3,6 @@
     "quote_id" : "Q00000002",
     "producer" : "A broker",
     "age": 39,
-    "premium"  : 120.2
+    "premium"  : 120.2,
+    "splitter": "A"
 }

@@ -32,7 +32,7 @@ class store{
         this.dat_file = path.join(options.folder, (options.prefix||'primary')+'.dat');
         this.fh = null;
         this.header = new Uint8Array(16);
-        this._open(this.idx_file, options.M||4, options.keylen||12, options.unique);
+        this._open(this.idx_file, options.M||4, options.keylen||16, options.unique);
         this._open_data(this.dat_file);
     }
 
