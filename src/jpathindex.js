@@ -9,10 +9,15 @@ const stores = {};
 
 class jpathindex{
     constructor(jpath, basepath, reader){
+        // console.log('jpath:', jpath);
         this.jpath = jpath;
         const shasum = crypto.createHash('sha1');
         const hash = shasum.update(jpath).digest('hex');
         const rhash = hash.substr(0,1) + (reader ? 'x' : '');
+
+        // const hash = String.fromCharCode(48+(jpath.charCodeAt(jpath.length-1) % 10));
+        // const rhash= hash+(reader ? 'x' : '');
+
         if( !stores[rhash] ){
             this.idfolder = path.join(basepath, hash.substr(0, 1));
             if( !fs.existsSync(this.idfolder) ){
@@ -22,9 +27,9 @@ class jpathindex{
                 fs.writeFileSync(path.join(this.idfolder, 'paths.json'), '{}');
             }
             const config = path.join(basepath, 'config.json');
-            if( !fs.existsSync(config) )fs.writeFileSync(config, JSON.stringify({M: +process.env.M||200 , keylen: +process.env.KEYLENGTH||16}));
+            if( !fs.existsSync(config) )fs.writeFileSync(config, JSON.stringify({M: +process.env.M||200, keylen: +process.env.KEYLENGTH||16, vallen: +process.env.VALLENGTH||12}));
             const options = JSON.parse(fs.readFileSync(config, 'utf8'));
-            stores[rhash] = new keystore({M: options.M, keylen: options.keylen, basepath: this.idfolder, reader:reader});
+            stores[rhash] = new keystore({M: options.M, keylen: options.keylen, vallen: options.vallen, basepath: this.idfolder, reader:reader});
         }
         this.st = {
             primary: stores[rhash]._get_store('primary'+jpath, true),
@@ -54,7 +59,9 @@ class jpathindex{
     values(pkeys, resp, path){
         // if( !this.st )return null;
         const bp = new bptree(this.st.primary);
-        for(var pkey of pkeys ){
+        //for(var pkey of pkeys ){
+        for(var i=0; i<pkeys.length; i++){
+            const pkey = pkeys[i];
             if( !resp.hasOwnProperty(pkey) )resp[pkey] = {};
             resp[pkey][path] = bp.get(pkey);
         }

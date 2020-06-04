@@ -4,7 +4,9 @@ const keystore = require('../src/keystore');
 const bptree= require('../src/bptree');
 const jindex= require('../src/jindex');
 const jpath = require('../src/jpathindex');
+const cache = require('../src/cache');
 const assert = require( "assert" );
+
 
 process.env.M = 4;
 
@@ -35,9 +37,69 @@ before(()=>{
     if( fs.existsSync(bpnumdatfile) )fs.unlinkSync(bpnumdatfile);
 
     // create a new store with unique index
-    keyst = new keystore({M:4, keylen: 16, basepath: basepath});
-    st = keyst._get_store('primary', true); // new store({folder: basepath, unique: true});
-    nst = keyst._get_store('value', false); // new store({M: 4, folder: basepath, prefix: 'numeric', unique: true});
+    // keyst = new keystore({M:4, keylen: 16, basepath: basepath});
+    // st = keyst._get_store('primary', true); // new store({folder: basepath, unique: true});
+    // nst = keyst._get_store('value', false); // new store({M: 4, folder: basepath, prefix: 'numeric', unique: true});
+});
+
+describe("cache test", ()=>{
+    it("remove_one from empty", ()=>{
+        assert( !cache._remove_one(), 'Expected false');
+    });
+    it("add", ()=>{
+        assert( cache.set("1", "One") == "One", "Set failed");
+    });
+    it("read", ()=>{
+        assert( cache.get("1") == "One", "get failed");
+    });
+    it("add existing", ()=>{
+        assert( cache.set("1", "One-1") == "One-1", "Update failed");
+    });
+    it("read-fail", ()=>{
+        assert( cache.get("2") == null, "get must fail");
+    });
+    it("add 2", ()=>{
+        assert( cache.set("2", "Two") == "Two", "Second add failed");
+    });
+    it("read-one (move to head)", ()=>{
+        assert( cache.get("1") == "One-1", "get one failed");
+    });
+    it("key order", ()=>{
+        var ret = JSON.stringify(cache._keys());
+        var exp = '["1","2"]';
+        assert( JSON.stringify(cache._keys()) == '["1","2"]', "Key order failed expected "+exp+" found "+ret);
+    });
+    it("add 3", ()=>{
+        assert( cache.set("3", "Three") == "Three", "3 add failed");
+    });
+    it("add 4", ()=>{
+        assert( cache.set("4", "Four") == "Four", "4 add failed");
+    });
+    it("add 5", ()=>{
+        assert( cache.set("5", "Five") == "Five", "5 add failed");
+    });
+    it("keys truncated", ()=>{
+        var ret = JSON.stringify(cache._keys());
+        var exp = '["5","4","3","1"]';
+        assert( ret == exp, "Key order failed expected "+exp+" found "+ret);
+    });
+    it("keys print", ()=>{
+        cache._print();
+    });
+    it("repeated read", ()=>{
+        assert( cache.get("3") == "Three", "get 3 failed");
+        assert( cache.get("3") == "Three", "get 3 failed");
+        assert( cache.get("3") == "Three", "get 3 failed");
+    });
+
+});
+
+describe( "setup basepath", () => {
+    it('create keystore', ()=>{
+        keyst = new keystore({M:4, keylen: 16, vallen: 12, basepath: basepath});
+        st = keyst._get_store('primary', true); // new store({folder: basepath, unique: true});
+        nst = keyst._get_store('value', false); // new store({M: 4, folder: basepath, prefix: 'numeric', unique: true});    
+    });
 });
 
 describe( "b+ tree", () => {
@@ -96,7 +158,7 @@ describe( "b+ tree", () => {
     it("reopen", ()=>{
         keyst._close();
         keyst._close();    //redundant should not fail
-        keyst = new keystore({M:4, keylen: 16, basepath: basepath});
+        keyst = new keystore({M:4, keylen: 16, vallen: 12, basepath: basepath});
         st = keyst._get_store('primary', true); // new store({folder: basepath, unique: true});
         nst = keyst._get_store('value', false); // new store({M: 4, folder: basepath, prefix: 'numeric', unique: true});
     
@@ -111,7 +173,7 @@ describe( "b+ tree", () => {
     it('readonly', async ()=>{
         fs.rmdirSync(basepath+'x', {recursive: true});
         fs.rmdirSync(basepath+'y', {recursive: true});
-        await wait(1000)
+        await wait(800)
         var nst = null;
         assert.throws( ()=>{nst = new keystore({M: 4, basepath: basepath+'x', unique: true, reader: true})}, Error, 'Expected exception');
         
@@ -125,9 +187,6 @@ describe( "b+ tree", () => {
         // var rst = nst._get_store('rtest', true);
         assert( !fs.existsSync(path.join(basepath, 'rtest.bin') ), "rtest.bin must not exists" );
         assert( !fs.existsSync(path.join(basepath, 'rtest.dat') ), "rtest.dat must not exists" );
-
-        
-        
         
     });
 
@@ -153,6 +212,18 @@ describe( "b+ tree", () => {
         assert(bp.get('a')=='Test', 'Expected Test');
     });
     
+    it('error-test', ()=>{
+        assert.throws( ()=>{new bptree(null)}, Error, "should fail");
+    });
+
+    it('param-test', ()=>{
+        var bp = new bptree(st);
+        bp.put("", "Hello");
+        bp.put(undefined, "Hello");
+        bp.put(null, "Hello");
+        assert(bp.get('')=='Hello', 'Expected Hello, found '+bp.get(''));
+    });
+
 });
 
 describe( "b+ tree numeric", () => {
@@ -251,7 +322,7 @@ describe( "json index", () => {
         assert(ret=="P001", "Expected single key P001, found ", ret);
 
         var ret = ji.get('.producer', 'a broker');
-        assert(ret=="[\"P001\",\"P002\"]", "Expected two key P001,P002")
+        assert(ret=="[\"P001\",\"P002\"]", "Expected two key P001,P002 found "+ret)
 
         var ret = ji.get('.premium', '100.1');
         assert(ret=="[\"P001\",\"P00000003\"]", "Expected two key P001,P00000003, got", ret)
@@ -259,12 +330,34 @@ describe( "json index", () => {
         assert.throws( ()=>{ji.get('.random', '100.1')}, Error, 'Expected error');
         ji.index({'.random': 'hello'});
     });
+    it("Empty path ", ()=>{
+        var ji = new jindex(basepath, true);
+        var ret = ji.get('', 'Empty');
+        assert(ret=="P001", "Expected single key P001, found ", ret);
+        var resp = {};
+        ji.values(undefined, ['P001'], resp);
+        assert(resp['P001']['.'] == 'Empty', 'Expected Empty got '+JSON.stringify(resp));
+
+        ji.walk(undefined);
+    });
+
+    it('long key', ()=>{
+        var ji = new jindex(basepath, true);
+        var ret = ji.get('.large', 'long repeat value more than 20');
+        assert(ret=="[\"P001\",\"P002\"]", "Expected two key P001,P002 found "+ret)
+        var ret = ji.get('.large2', 'long repeat value more than 19');  //works like a prefix
+        assert(ret=="[\"P001\",\"P002\"]", "Expected two key P001,P002 found "+ret)
+    })
+
 
     it("read-object ", ()=>{
         var ji = new jindex(basepath, true);
         var resp =  {};
         ji.values('.quote_id', ['P00000003','P001'], resp);
-        console.log(resp);
+        ji.values('.age', ['P00000003','P001'], resp);
+        assert( resp['P00000003']['.quote_id'] == 'Q003');
+        assert( resp['P001']['.quote_id'] == 'Q001');
+        // console.log(resp);
     });
 
     it("json walk ", ()=>{

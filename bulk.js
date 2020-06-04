@@ -5,6 +5,7 @@ const jpath = require('./src/jpathindex');
 
 process.env.M = 200;
 process.env.KEYLENGTH=16;
+process.env.VALLENGTH=16;
 
 if( process.argv.length <= 4 ){
     console.log('jstore v1.0.0');

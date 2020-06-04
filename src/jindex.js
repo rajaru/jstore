@@ -43,18 +43,18 @@ class jindex{
     }
 
     get(path, value, pkey){
-        var jp = new jpath((path||'').toLowerCase(), this.basefolder, this.reader);
+        var jp = new jpath((path||'.').toLowerCase(), this.basefolder, this.reader);
         return jp.get(value, pkey);
     }
 
     values(path, pkeys, resp){
-        var jp = new jpath((path||'').toLowerCase(), this.basefolder, this.reader);
-        jp.values(pkeys, resp, path);
+        var jp = new jpath((path||'.').toLowerCase(), this.basefolder, this.reader);
+        jp.values(pkeys, resp, path||'.');
     }
 
     
     walk(path, primary){
-        var jp = new jpath((path||'').toLowerCase(), this.basefolder, this.reader);
+        var jp = new jpath((path||'.').toLowerCase(), this.basefolder, this.reader);
         return jp.walk(primary);
     }
 

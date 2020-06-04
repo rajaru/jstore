@@ -4,5 +4,9 @@
     "producer" : "A broker",
     "age": 32,
     "premium"  : 100.10,
-    "splitter": "A"
+    "splitter": "A",
+    "0_1_2" : "ignore",
+    "":"Empty",
+    "large": "long repeat value more than 20",
+    "large2": "long repeat value more than 19"
 }

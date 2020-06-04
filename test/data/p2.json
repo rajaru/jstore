@@ -1,8 +1,10 @@
 {
     "key": "P002",
     "quote_id" : "Q00000002",
-    "producer" : "A broker",
+    "producer" : "a broker",
     "age": 39,
     "premium"  : 120.2,
-    "splitter": "A"
+    "splitter": "A",
+    "large": "long repeat value more than 20",
+    "large2":"long repeat value more than 18"
 }

@@ -1,6 +1,6 @@
 const fs     = require('fs');
 const path   = require('path');
-
+const cache  = require('./cache');
 
 function _num_compare(buff1, offset1, buff2, offset2, len, dbg){
     if( buff1[offset1] == 0xff )return 1;
@@ -25,33 +25,31 @@ function _get_uint32(uint8, offset){
     return ((uint8[offset+0]<<24)>>>0) + (uint8[offset+1]<<16) + (uint8[offset+2]<<8) + uint8[offset+3];
 }
 
-
 class store{
     constructor(header, jpath, pstore){
         this.jpath = jpath;
         this.header = header;
         this.pstore = pstore;
         this.keylen = pstore.keylen;
+        this.vallen = pstore.vallen;
         this.keytype= this.header.keytype;
         this.M      = pstore.M;
         this.block  = pstore.block;
         this.unique = header.unique;
         this._compare = this.keytype == 0 ? _num_compare : _str_compare;
+        
     }
 
-    keyb(key, bt){
+    keyb(key, buf){
+        key = key || 0;
         if( this.header.keytype == 0 ){
-            key = key || 0;
-            if( Number(key) === +key )return +key;
-            return 0;
-            // key = key || 0;                         // undefined/null etc coerce to 0
-            // if( Number(key) === +key )return +key;   // number key
-            // if( !bt )return 0;
-            // // console.log('key: ', key, ' is not num converting ',this.idx_file);
-            // this.convert_to_string(bt);
+            return ( Number(key) === +key ) ? +key : 0;
         }
         if(typeof key!=='string')key = ''+key;
-        return Buffer.from((key.toLowerCase()+'                     ').substr(0,this.keylen));              // caseless
+        // return Buffer.from((key.toLowerCase()+'                     ').substr(0,this.keylen));              // caseless
+        if(key.length<this.keylen)buf.fill(' ', key.length);
+        buf.write(key.toLowerCase());
+        return buf;
     }
 
     root(){
@@ -70,16 +68,21 @@ class store{
         return this.pstore.read(at);
     }
 
+    // record structure
+    // ------------key------------ ---type---- ----------value------------
+    // kk kk kk kk ... kk kk kk kk tt tt tt tt vv vv vv vv ... vv vv vv vv
+    //
     get_rec(ui8, offset){
-        var buf = ui8.slice(offset, offset+this.keylen+12);
-        var dv = new DataView(buf.buffer);
-        let type = _get_uint32(ui8, offset+this.keylen+8);
+        let type = _get_uint32(ui8, offset+this.keylen);
         
-        if( type==0xffffffff )return _get_uint32(ui8, offset+this.keylen);//return dv.getUint32(this.keylen);
-        if( type==0xfffffffe )return dv.getFloat64(this.keylen);
-        if( type<=8 )return Buffer.from(buf.slice(this.keylen, this.keylen+type)).toString();
+        if( type==0xffffffff )return _get_uint32(ui8, offset+this.keylen+4);//return dv.getUint32(this.keylen);
+        if( type==0xfffffffe )return new DataView(ui8.buffer).getFloat64(offset+this.keylen+4);
 
-        return this.pstore._get_data(_get_uint32(ui8, offset+this.keylen), type);
+        //if( type<=this.vallen )return Buffer.from(ui8.slice(offset+this.keylen+4, offset+this.keylen+4+type)).toString();
+        if( type<=this.vallen )return Buffer.from(ui8.subarray(offset+this.keylen+4, offset+this.keylen+4+type)).toString();
+        // if( type<=this.vallen )return Buffer.from(ui8, offset+this.keylen+4, type).toString();
+
+        return this.pstore._get_data(_get_uint32(ui8, offset+this.keylen+4), type);
     }
 
     set_rec(ui8, key, value, offset){
@@ -96,24 +99,20 @@ class store{
         var dv = new DataView(ui8.buffer);
 
         // case when convert_to_string sends the rest of record as value
-        if( value instanceof Uint8Array && value.length==12 ){
+        if( value instanceof Uint8Array && value.length==(this.vallen+4) ){
             ui8.set(value, offset);
             return;
         }
 
         if( !this.unique && append ){
             let varr = [];
-            let type = _get_uint32(ui8, offset+8);
-            if( type==0xffffffff )varr.push(_get_uint32(ui8, offset));//varr.push(dv.getUint32(offset));
-            else if( type==0xfffffffe )varr.push(dv.getFloat64(offset));
-            else if( type<=8 )varr.push( Buffer.from(ui8.slice(offset, offset+type)).toString() );
+            let type = _get_uint32(ui8, offset);
+            if( type===0xffffffff )varr.push(_get_uint32(ui8, offset+4));//varr.push(dv.getUint32(offset));
+            else if( type===0xfffffffe )varr.push(dv.getFloat64(offset+4));
+            else if( type<=this.vallen )varr.push( Buffer.from(ui8.slice(offset+4, offset+4+type)).toString() );
             else{
-                let dataptr = _get_uint32(ui8, offset);//dv.getUint32(offset);
+                let dataptr = _get_uint32(ui8, offset+4);//dv.getUint32(offset);
                 let v = this.pstore._get_data(dataptr, type);
-                // if( v[0] == '[' )try{JSON.parse(v)}catch(e){
-                //     console.log('dptr: ', dataptr, offset, type);
-                //     console.log(v);
-                // }
                 if( v[0] == '[' )varr = JSON.parse(v);
                 else varr = [v];
             }
@@ -133,22 +132,22 @@ class store{
 
         if( !isNaN(value) ){
             if( Number.isInteger(+value) ){
-                _set_uint32(ui8, offset, +value);
-                _set_uint32(ui8, offset+8, -1);
+                _set_uint32(ui8, offset+4, +value);
+                _set_uint32(ui8, offset, 0xffffffff);
             }
             else{
-                dv.setFloat64(offset, +value);
-                _set_uint32(ui8, offset+8, -2);
+                dv.setFloat64(offset+4, +value);
+                _set_uint32(ui8, offset, 0xfffffffe);
             }
         }
         else{
-            if(value.length<=8){
-                ui8.set(Buffer.from(value), offset);
+            if(value.length<=this.vallen){
+                ui8.set(Buffer.from(value), offset+4);
             }
             else{
-                _set_uint32(ui8, offset, this.pstore._set_data(value));
+                _set_uint32(ui8, offset+4, this.pstore._set_data(value));
             }
-            _set_uint32(ui8, offset+8, value.length);
+            _set_uint32(ui8, offset, value.length);
         }
     }
 
@@ -157,7 +156,7 @@ class store{
         var dv = new DataView(ui8.buffer);
         for(var offset=16; offset<this.block; offset+=this.reclen){
             if( ui8[offset] == 0xff )break;
-            keys[''+dv.getFloat64(offset)] = ui8.slice(offset+this.keylen, offset+this.keylen+12);
+            keys[''+dv.getFloat64(offset)] = ui8.slice(offset+this.keylen, offset+this.keylen+this.vallen+4);
         }
         return _get_uint32(ui8, 4);
     }
@@ -208,38 +207,36 @@ class keystore{
 
         // store parameters
         this.keylen = options.keylen || 12;
+        this.vallen = options.vallen || 8;      // minimum should be 8
         this.M      = (options.M || 4);
-        this.reclen = this.keylen + 12;
+        this.reclen = this.keylen + this.vallen + 4;
         this.block  = 16 + this.M * this.reclen;
         this.ifh    = this._open(this.keyfile);
         this.dfh    = this._open(this.datfile);
+
+        this.dbuf   = Buffer.allocUnsafe(8*1024);
     }
 
     // open or create the file
     _open(fname){
+        var mode = this.reader ? 'r' : 'r+';
         if( !fs.existsSync(fname) ){
             if( this.reader )throw new Error('Key file does not exists');
-            return fs.openSync(fname, 'w+', fs.constants.O_NONBLOCK);
+            mode = 'w+';
         }
-        else{
-            return fs.openSync(fname, this.reader ? 'r' : 'r+', fs.constants.O_NONBLOCK);
-        }
+        return fs.openSync(fname, mode, fs.constants.O_NONBLOCK);
     }
 
     _get_store(jpath, unique){
         if( !this.paths[jpath] ){   // create a root node and set that as root
             if(this.reader)return;
-            var root = this._new_leaf();    //this is root as well as first leaf node
-            this.paths[jpath] = {root: root, first: root, keytype: 0, unique: unique||0};
+            var buf = new Uint8Array(this.block).fill(0xff);
+            buf[0] = 1;
+            var idx = this.write(-1, buf);
+            this.paths[jpath] = {root: idx, first: idx, keytype: 0, unique: unique||0};
             fs.writeFileSync(this.pathfile, JSON.stringify(this.paths));
         }
         return new store(this.paths[jpath], jpath, this);
-    }
-
-    _new_leaf(){
-        var leaf = new Uint8Array(this.block).fill(0xff);
-        leaf[0] = 1;
-        return this.write(-1, leaf);    //this is root as well as first leaf node
     }
 
     _set_root(jpath, root){
@@ -252,23 +249,19 @@ class keystore{
     }
 
     read(at){
+        var ret = cache.get(this.basepath+at);
+        if( ret != null )return ret;
+
         var buf = new Uint8Array(this.block);
         /* istanbul ignore if */
-        if( fs.readSync(this.ifh, buf, 0, this.block, (at*this.block)) != this.block)
-            throw Error('Could not read '+this.block+' bytes at '+at);
+        if( fs.readSync(this.ifh, buf, 0, this.block, (at*this.block)) != this.block)throw Error('Could not read '+this.block+' bytes at '+at);
+        cache.set(this.basepath+at, buf);
         return buf;
     }
     write(at, buffer){
-        if( at == -1 ){
-            const {size} = fs.fstatSync(this.ifh);
-            at = (size) / this.block;
-        }
-        // try{fs.writeSync(this.ifh, Buffer.from(buffer), 0, this.block, (at*this.block));}
-        // catch(e){
-        //     console.log('write failed @ ', at, (at*this.block), 'fh:', this.ifh, 'buf', buffer);
-        //     console.log(e);
-        // }
+        if( at == -1 )at = fs.fstatSync(this.ifh).size / this.block;
         fs.writeSync(this.ifh, Buffer.from(buffer), 0, this.block, (at*this.block));
+        cache.set(this.basepath+at, buffer);
         return at;
     }
     _set_data(val){
@@ -282,9 +275,9 @@ class keystore{
         return size;
     }
     _get_data(offset, len){
-        var buf = Buffer.from(new ArrayBuffer(len));
-        fs.readSync(this.dfh, buf, 0, len, offset);
-        return buf.toString();
+        if( this.dbuf.length < len )this.dbuf = Buffer.allocUnsafe(len);
+        fs.readSync(this.dfh, this.dbuf, 0, len, offset);
+        return this.dbuf.toString('utf8', 0, len);
     }
     _close(){
         if( this.ifh )fs.closeSync(this.ifh);
@@ -305,11 +298,11 @@ class keystore{
             
             data[i] = [];
             for(var offset=16; offset<this.block; offset+=this.reclen){
-                var type = _get_uint32(ui8, offset+this.keylen+8);
-                if( type == 0xffffffff || type == 0xfffffffe || type <= 8 )continue;
+                var type = _get_uint32(ui8, offset+this.keylen);
+                if( type == 0xffffffff || type == 0xfffffffe || type <= this.vallen )continue;
                 inuse += type;
-                var doffset = _get_uint32(ui8, offset+this.keylen);
-                data[i].push({doffset: doffset, length: type, ioffset: offset+this.keylen});
+                var doffset = _get_uint32(ui8, offset+this.keylen+4);
+                data[i].push({doffset: doffset, length: type, ioffset: offset+this.keylen+4});
             }
             if( data[i].length==0 )delete data[i];
         }
@@ -341,17 +334,10 @@ class keystore{
             }
             fs.closeSync(this.dfh);
             fs.closeSync(ofh);
-            // fs.renameSync(this.datfile, this.datfile+'.old');
-            // fs.unlinkSync(this.datfile);
-            // fs.renameSync(this.datfile+'.tmp', this.datfile);
-            // this.dfh = fs.openSync(this.datfile, 'r+', fs.constants.O_NONBLOCK);
             this.dfh = null;
             fs.unlinkSync(this.datfile);
             fs.renameSync(this.datfile+'.tmp', this.datfile);
-            // fs.unlink(this.datfile, ()=>{
-            //     fs.renameSync(this.datfile+'.tmp', this.datfile);
-            // });
-
+            cache.discard();
         }
     }
 }
