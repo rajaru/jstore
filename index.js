@@ -26,10 +26,12 @@ fastify.get('/pkey', async (req, res) => {
 });
 
 function _intersect(arr){
-    var res = {};
+    var res = null;
     for(var a of arr ){
         if( !(a instanceof Array) )a = [a];
-        if( res == null )res = a.reduce((a,x)=>{a[x]=1; return a;}, {});
+        if( res == null ){
+            res = a.reduce((a, x)=>{a[x]=1; return a;}, {});
+        }
         else{
             for(var mem in res )if( a.indexOf(mem)<0 )delete res[mem];
         }

@@ -81,7 +81,7 @@ function get_(keys){
         type: 'GET',
         dataType: "json",
         success: function(resp){
-            $('#res').html(resp.data);
+            $('#res').html('<pre>'+JSON.stringify(resp.data, null, 4)+'</pre>');
         }
     });
 }
@@ -107,7 +107,8 @@ function objects(){
         dataType: "json",
         success: function(resp){
             console.log(resp);
-            seterr('obejcts: '+JSON.stringify(resp.data));
+            //seterr('obejcts: '+JSON.stringify(resp.data));
+            $('#res').html('<pre>'+JSON.stringify(resp.data, null, 4)+'</pre>');
         }
     });
 }

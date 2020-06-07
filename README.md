@@ -28,11 +28,13 @@ export JS_PKEY=policy_id
 export JS_MAX_JSON_SIZE=5242880  
 export M=200  
 
-**JS_KEYLENGTH** : Maximum length of keys recognied (rest will be discarded)  
+```
+**JS_KEYLENGTH** : Maximum length of keys recognised (rest will be discarded)  
 **JS_VALLENGTH**: Maximum length  of value that is stored as part of index file itself (when exceeded, gets stored as part of data file)  
 **JS_PORT**: Web (http) server port number  
 **JS_PKEY**: Primary key (Every JSON object must have a valid value against this name otherwise will not be indexed)  
 **JS_MAX_JSON_SIZE**: Maximum post size  
+```
 
 **Unit test** needs nyc to be installed (npm install nyc)  
 > nyc --reporter=lcov --reporter=html mocha  
@@ -44,7 +46,7 @@ An utility module is available to bulk import JSON objects from folder
 jpath: starts with . and every member is seperated by .  
 ex: .quote.data.quote_no
 
-**/pkey**
+**/pkey**  
 Method: GET  
 Paramters: <jpath1>=<value1>&<jpath2>=<value2>  
 Returns: Array of primary keys that match all of above conditions  
@@ -54,7 +56,7 @@ http://127.0.0.1:8080/pkey?.quote_id=Q00000001
 {"status":0,"data":["P00000004"]}
 ```
 
-**/get**
+**/get**  
 Method: GET  
 Paramters: <jpath1>=<pkey1>&<jpath2>=<pkey2>  
 Returns: Array of values that match above conditions  
@@ -64,13 +66,13 @@ http://127.0.0.1:8080/val?.quote_id=P00000004
 {"status":0,"data":["Q00000001"]}
 ```
 
-**/index**
+**/index**  
 Method: POST  
 Paramters: JSON Object  
 Returns: None  
 
-**/objecys**
-Method: GET  
+**/objects**  
+Method: POST  
 Paramters: <fields>=<jpath1,jpath2,jpath3...>&<pkeys>=<pkey1,pkey2,pkey3>  
 Returns: Object with primary key as name and sub object with JSON-Path as name and field value as value  
 Ex:  
@@ -78,16 +80,16 @@ http://127.0.0.1:8080/objects
 POST data: {"fields":".quote_id,.quote.quote_no","pkeys":"P00000004,P00000005"}  
 ```javascript
 {
-"status":0,
-"data":{
-    "P00000004":{
-        ".quote_id":"Q00000001",
-        ".quote.quote_no":"QUT2020HCB00100001"
-    },
-    "P00000005":{
-        ".quote_id":"Q00000002",
-        ".quote.quote_no":"QUT2020HCB00100004"
+    "status":0,
+    "data":{
+        "P00000004":{
+            ".quote_id":"Q00000001",
+            ".quote.quote_no":"QUT2020HCB00100001"
+        },
+        "P00000005":{
+            ".quote_id":"Q00000002",
+            ".quote.quote_no":"QUT2020HCB00100004"
+        }
     }
-}
 }
 ```
