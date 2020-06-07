@@ -7,6 +7,12 @@ const folder = process.env.JS_FOLDER    || 'z:\\temp\\jstrunit';
 const pkey   = process.env.JS_PKEY      || 'policy_id';
 const maxsize= process.env.JS_MAX_JSON_SIZE  || 5*1024*1024;
 
+fastify.setErrorHandler(async (error, req, reply) => {
+    console.log(error);
+    reply.status(500)
+    reply.send()
+});
+
 fastify.get('/pkey', async (req, res) => {
     const ji = new jindex(folder, true);    //read mode
     var pkeys = [];
@@ -16,18 +22,31 @@ fastify.get('/pkey', async (req, res) => {
             catch(e){console.log(e);}
         }
     }
-    res.send({ status: 0, data: pkeys });
+    res.send({ status: 0, data: _intersect(pkeys)  });
 });
+
+function _intersect(arr){
+    var res = {};
+    for(var a of arr ){
+        if( !(a instanceof Array) )a = [a];
+        if( res == null )res = a.reduce((a,x)=>{a[x]=1; return a;}, {});
+        else{
+            for(var mem in res )if( a.indexOf(mem)<0 )delete res[mem];
+        }
+    }
+    return Object.keys(res);
+}
+
 fastify.get('/val', async (req, res) => {
     const ji = new jindex(folder, true);    //read mode
-    var pkeys = [];
+    var vals = [];
     for(var q in req.query){
         if( q.startsWith('.') ){
-            try{pkeys.push(ji.get(q, null, req.query[q]));}
+            try{vals.push(ji.get(q, null, req.query[q]));}
             catch(e){console.log(e);}
         }
     }
-    res.send({ status: 0, data: pkeys });
+    res.send({ status: 0, data: vals });
 });
 
 fastify.get('/walk', async (req, res) => {
@@ -40,13 +59,19 @@ fastify.post('/objects', async (req, res) => {
     var pkeys =req.body.pkeys.split(',');
     const ji = new jindex(folder, true);    //read mode
     const resp = {};
-    for(var pkey of pkeys )resp[pkey] = {};
     for(var jpath of jpaths){
-        for(var pkey of pkeys ){
-            resp[pkey][jpath] = ji.get(jpath, null, pkey);
-        }
+        try{ji.values(jpath, pkeys, resp);}catch(e){/*console.log(e)*/}
     }
     res.send({ status: 0, data: resp });
+
+    // const resp = {};
+    // for(var pkey of pkeys )resp[pkey] = {};
+    // for(var jpath of jpaths){
+    //     for(var pkey of pkeys ){
+    //         resp[pkey][jpath] = ji.get(jpath, null, pkey);
+    //     }
+    // }
+    // res.send({ status: 0, data: resp });
 });
 
 

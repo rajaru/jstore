@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const jindex = require('./src/jindex');
-const jpath = require('./src/jpathindex');
+const jindex = require('../src/jindex');
+const jpath = require('../src/jpathindex');
 
 process.env.M = 200;
-process.env.KEYLENGTH=16;
-process.env.VALLENGTH=16;
+process.env.JS_KEYLENGTH=16;
+process.env.JS_VALLENGTH=16;
 
 if( process.argv.length <= 4 ){
     console.log('jstore v1.0.0');
@@ -38,7 +38,7 @@ else{
                 if( json instanceof Array )json = json[0];
                 ji.index(json, pkey);
                 if( count%50 == 0 )jpath._compact();
-                console.log('    ', Object.keys(ji.jpaths).length, (new Date().getTime()-st));
+                console.log('    ', Object.keys(ji.jpaths).length, (new Date().getTime()-st), 'ms');
             }catch(e){
                 console.log(fname, 'indexing json failed', e);
             }

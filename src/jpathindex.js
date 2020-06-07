@@ -6,28 +6,29 @@ const crypto = require('crypto');
 const keystore = require('./keystore');
 
 const stores = {};
+const SUBFOLDERS=1;
 
 class jpathindex{
     constructor(jpath, basepath, reader){
-        // console.log('jpath:', jpath);
         this.jpath = jpath;
+
         const shasum = crypto.createHash('sha1');
         const hash = shasum.update(jpath).digest('hex');
-        const rhash = hash.substr(0,1) + (reader ? 'x' : '');
-
-        // const hash = String.fromCharCode(48+(jpath.charCodeAt(jpath.length-1) % 10));
-        // const rhash= hash+(reader ? 'x' : '');
+        const rhash = hash.substr(0, SUBFOLDERS) + (reader ? 'x' : '');
 
         if( !stores[rhash] ){
-            this.idfolder = path.join(basepath, hash.substr(0, 1));
+            
+            this.idfolder = path.join(basepath, hash.substr(0, SUBFOLDERS));
             if( !fs.existsSync(this.idfolder) ){
                 if( reader )throw new Error('jpath '+jpath+' does not exists');
-                //{console.log('jpath', jpath, 'does not exists'); return;}
                 fs.mkdirSync(this.idfolder, { recursive: true });
                 fs.writeFileSync(path.join(this.idfolder, 'paths.json'), '{}');
             }
+
             const config = path.join(basepath, 'config.json');
-            if( !fs.existsSync(config) )fs.writeFileSync(config, JSON.stringify({M: +process.env.M||200, keylen: +process.env.KEYLENGTH||16, vallen: +process.env.VALLENGTH||12}));
+            if( !fs.existsSync(config) )
+                fs.writeFileSync(config, JSON.stringify({M: +process.env.M||200, keylen: +process.env.JS_KEYLENGTH||16, vallen: +process.env.JS_VALLENGTH||12}));
+
             const options = JSON.parse(fs.readFileSync(config, 'utf8'));
             stores[rhash] = new keystore({M: options.M, keylen: options.keylen, vallen: options.vallen, basepath: this.idfolder, reader:reader});
         }
@@ -47,7 +48,6 @@ class jpathindex{
 
     get(value, primarykey){
         // console.log('jp.get:', typeof value, typeof primarykey, value, primarykey );
-        // if( !this.st )return null;
         if( value ){
             return new bptree(this.st.value).get(value);
         }
@@ -57,9 +57,7 @@ class jpathindex{
     }
 
     values(pkeys, resp, path){
-        // if( !this.st )return null;
         const bp = new bptree(this.st.primary);
-        //for(var pkey of pkeys ){
         for(var i=0; i<pkeys.length; i++){
             const pkey = pkeys[i];
             if( !resp.hasOwnProperty(pkey) )resp[pkey] = {};
@@ -69,7 +67,6 @@ class jpathindex{
 
 
     walk(primary){
-        // if( !this.st )return null;
         return (new bptree(primary ? this.st.primary : this.st.value)).walk();
     }
 

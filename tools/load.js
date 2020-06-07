@@ -4,8 +4,8 @@
  */
 process.env.CACHE_BLOCK_SIZE = 40; //160;
 const fs = require('fs');
-const jindex = require('./src/jindex');
-const cache = require('./src/cache');
+const jindex = require('../src/jindex');
+// const cache = require('../src/cache');
 
 const basefolder= process.argv[2];
 const datafolder= process.argv[3];
@@ -41,4 +41,4 @@ for(var i=0; i<1000; i++){
 // console.log(ret);
 const rescount = Object.keys(ret).length;
 console.log('done in ', (new Date().getTime()-st)/i, 'ms', rescount, 'entries', (new Date().getTime()-st)/1000, 's', rescount*i );
-console.log('cache: hit: ', cache.hit, 'miss', cache.miss);
+// console.log('cache: hit: ', cache.hit, 'miss', cache.miss);
