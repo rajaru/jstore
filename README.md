@@ -15,68 +15,68 @@ Uses Fastify to server requests, can be changed to any other web framework easil
 ### Install and Run
 Clone from github https://github.com/rajaru/jstore
 (Use node version 10.12 or above)
-> cd jstore
-npm install
-node index.js
+> cd jstore  
+npm install  
+node index.js  
 
 Key length and value length parameters can be controlled through environment variables (note: these parameters are used only during the first initialization of store folder, not after that)
-> export JS_KEYLENGTH=20
-export JS_VALLENGTH=20
-export JS_FOLDER=z:\temp\jstr
-export JS_PORT=8080
-export JS_PKEY=policy_id
-export JS_MAX_JSON_SIZE=5242880
-export M=200
+> export JS_KEYLENGTH=20  
+export JS_VALLENGTH=20  
+export JS_FOLDER=z:\temp\jstr  
+export JS_PORT=8080  
+export JS_PKEY=policy_id  
+export JS_MAX_JSON_SIZE=5242880  
+export M=200  
 
-**JS_KEYLENGTH** : Maximum length of keys recognied (rest will be discarded)
-**JS_VALLENGTH**: Maximum length  of value that is stored as part of index file itself (when exceeded, gets stored as part of data file)
-**JS_PORT**: Web (http) server port number
-**JS_PKEY**: Primary key (Every JSON object must have a valid value against this name otherwise will not be indexed)
-**JS_MAX_JSON_SIZE**: Maximum post size
+**JS_KEYLENGTH** : Maximum length of keys recognied (rest will be discarded)  
+**JS_VALLENGTH**: Maximum length  of value that is stored as part of index file itself (when exceeded, gets stored as part of data file)  
+**JS_PORT**: Web (http) server port number  
+**JS_PKEY**: Primary key (Every JSON object must have a valid value against this name otherwise will not be indexed)  
+**JS_MAX_JSON_SIZE**: Maximum post size  
 
-**Unit test** needs nyc to be installed (npm install nyc)
-> nyc --reporter=lcov --reporter=html mocha
+**Unit test** needs nyc to be installed (npm install nyc)  
+> nyc --reporter=lcov --reporter=html mocha  
 
-An utility module is available to bulk import JSON objects from folder
-> node tools/bulk.js <store-folder> <primary-key> <data-folder>
+An utility module is available to bulk import JSON objects from folder  
+> node tools/bulk.js <store-folder> <primary-key> <data-folder>  
 
 ### APIs
-jpath: starts with . and every member is seperated by .
+jpath: starts with . and every member is seperated by .  
 ex: .quote.data.quote_no
 
 **/pkey**
-Method: GET
-Paramters: <jpath1>=<value1>&<jpath2>=<value2>
-Returns: Array of primary keys that match all of above conditions
-Ex:
-http://127.0.0.1:8080/pkey?.quote_id=Q00000001
+Method: GET  
+Paramters: <jpath1>=<value1>&<jpath2>=<value2>  
+Returns: Array of primary keys that match all of above conditions  
+Ex:  
+http://127.0.0.1:8080/pkey?.quote_id=Q00000001  
 ```json
 {"status":0,"data":["P00000004"]}
 ```
 
 **/get**
-Method: GET
-Paramters: <jpath1>=<pkey1>&<jpath2>=<pkey2>
-Returns: Array of values that match above conditions
-Ex:
+Method: GET  
+Paramters: <jpath1>=<pkey1>&<jpath2>=<pkey2>  
+Returns: Array of values that match above conditions  
+Ex:  
 http://127.0.0.1:8080/val?.quote_id=P00000004
 ```json
 {"status":0,"data":["Q00000001"]}
 ```
 
 **/index**
-Method: POST
-Paramters: JSON Object
-Returns: None
+Method: POST  
+Paramters: JSON Object  
+Returns: None  
 
 **/objecys**
-Method: GET
-Paramters: <fields>=<jpath1,jpath2,jpath3...>&<pkeys>=<pkey1,pkey2,pkey3>
-Returns: Object with primary key as name and sub object with JSON-Path as name and field value as value
-Ex:
-http://127.0.0.1:8080/objects
-POST data: {"fields":".quote_id,.quote.quote_no","pkeys":"P00000004,P00000005"}
-```json
+Method: GET  
+Paramters: <fields>=<jpath1,jpath2,jpath3...>&<pkeys>=<pkey1,pkey2,pkey3>  
+Returns: Object with primary key as name and sub object with JSON-Path as name and field value as value  
+Ex:  
+http://127.0.0.1:8080/objects  
+POST data: {"fields":".quote_id,.quote.quote_no","pkeys":"P00000004,P00000005"}  
+```javascript
 {
 "status":0,
 "data":{
@@ -91,4 +91,3 @@ POST data: {"fields":".quote_id,.quote.quote_no","pkeys":"P00000004,P00000005"}
 }
 }
 ```
-
