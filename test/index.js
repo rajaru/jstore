@@ -258,24 +258,32 @@ describe( "b+ tree numeric", () => {
 });
 
 var filters = [];//['d.json', 'e.json'];
-function test_json(ji, file){
-    if( fs.existsSync(file) ){
-        var test = JSON.parse(fs.readFileSync(file, 'utf8'));
-        for(var k in test ){
-            for(var pkey in test[k]){
-                var ret = ji.get(k, null, pkey);
-                assert( ret == test[k][pkey], "Failed -"+file+":"+k+" expected "+test[k][pkey]+" found "+ret);
-            }                    
-        }    
+
+function add_test_case(jpath, vobj, txt){
+    it("read: "+jpath+" "+txt, ()=>{
+        var ji = new jindex(basepath);
+        for(var pkey in vobj){
+            var ret = ji.get(jpath, null, pkey);
+            assert( ret == vobj[pkey], "Failed -"+pkey+" expected "+vobj[pkey]+" found "+ret);
+        }                    
+
+    });
+}
+function add_test_paths(file, txt){
+    if( !fs.existsSync(file) )return;
+    var test = JSON.parse(fs.readFileSync(file, 'utf8'));
+    for(var k in test ){
+        add_test_case(k, test[k], txt);
     }
 }
+
+
 function add_json(file){
     it("json file "+file, ()=>{
         var ji = new jindex(basepath);
         if( file.endsWith('.json') ){
             var json = fs.readFileSync(path.join('./test/data', file), 'utf8');
             ji.index(json, 'key');
-            test_json(ji, path.join('./test/data', file.substr(0, file.length-4)+'txt'));
         }
     });
 }
@@ -285,20 +293,18 @@ describe( "json index", () => {
     fs.readdirSync('./test/data').forEach(file => {
         if( filters.length>0 && filters.indexOf(file)<0 )return;
         add_json(file);
+        add_test_paths(path.join('./test/data', file.substr(0, file.length-4)+'txt'), "");
     });
     
     it("clean", ()=>{
         var ji = new jindex(basepath);
         ji._clean();
     });
-    it("read ", ()=>{
-        var ji = new jindex(basepath);
-        fs.readdirSync('./test/data').forEach(file => {
-            if( file.endsWith('.txt') ){
-                var test = JSON.parse(fs.readFileSync(path.join('./test/data', file), 'utf8'));
-                test_json(ji, test);
-            }
-        });
+
+    fs.readdirSync('./test/data').forEach(file => {
+        if( file.endsWith('.txt') ){
+            add_test_paths(path.join('./test/data', file), "clean");
+        }
     });
     
     it("non-unique ", ()=>{

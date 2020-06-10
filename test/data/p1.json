@@ -8,5 +8,6 @@
     "0_1_2" : "ignore",
     "":"Empty",
     "large": "long repeat value more than 20",
-    "large2": "long repeat value more than 19"
+    "large2": "long repeat value more than 19",
+    "stage": [{"name":"quote", "status":"completed"}, {"name":"proposal", "status":"inprogress"}, {"name":"payment", "status":""}]
 }

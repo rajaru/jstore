@@ -3,5 +3,6 @@
     "quote_id" : "Q004",
     "producer" : "Another broker",
     "premium"  : 130,
-    "splitter": "A"
+    "splitter": "A",
+    "stage": [{"name":"quote", "status":"completed"}, {"name":"proposal", "status":"completed"}, {"name":"payment", "status":"completed"}, {"name":"policy", "status":"completed"}]
 }

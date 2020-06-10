@@ -2,5 +2,12 @@
     ".a" : { "1" : "Hello"},
     ".A" : { "1" : "Hello"},
     ".b" : { "1" : "There"},
-    ".B" : { "1" : "There"}
+    ".B" : { "1" : "There"},
+    ".aobj.str" : {"1": "Hello There"},
+    ".aobj.num" : {"1": 100.23},
+    ".aobj.Bol" : {"1": true},
+    ".aobj.arr.@.mem01" : {"1": "m01"},
+    ".aobj.arr.@.mem02" : {"1": 0.2},
+    ".aobj.arr.@.mem11" : {"1": "m11"},
+    ".arr.@" : {"1" : "[\"One\",\"Two\",3,4.5]"}
 }

@@ -1,5 +1,15 @@
 {
     "key": "1",
     "a" : "Hello",
-    "b" : "There"
+    "b" : "There",
+    "arr": ["One", "Two", 3, 4.5],
+    "aobj": {
+        "arr" : [
+            {"mem01": "m01", "mem02": 0.2},
+            {"mem11": "m11", "mem12": 1.2}
+        ],
+        "str": "Hello There",
+        "num": 100.23,
+        "Bol": true
+    }
 }

@@ -59,11 +59,16 @@ http://127.0.0.1:8080/pkey?.quote_id=Q00000001
 **/get**  
 Method: GET  
 Paramters: <jpath1>=<pkey1>&<jpath2>=<pkey2>  
-Returns: Array of values that match above conditions  
+Returns: Object with primary keys as name and values as value  
 Ex:  
 http://127.0.0.1:8080/val?.quote_id=P00000004
 ```json
-{"status":0,"data":["Q00000001"]}
+{
+    "status": 0,
+    "data":{
+        "P00000004":"Q00000001"
+    }
+}
 ```
 
 **/index**  

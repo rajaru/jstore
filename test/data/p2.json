@@ -6,5 +6,6 @@
     "premium"  : 120.2,
     "splitter": "A",
     "large": "long repeat value more than 20",
-    "large2":"long repeat value more than 18"
+    "large2":"long repeat value more than 18",
+    "stage": [{"name":"quote", "status":"completed"}, {"name":"proposal", "status":"completed"}, {"name":"payment", "status":"inprogress"}]
 }
