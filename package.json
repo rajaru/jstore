@@ -11,6 +11,6 @@
   "dependencies": {
     "fastify": "^2.14.1",
     "fastify-multipart": "^1.0.6",
-    "fastify-static": "^2.7.0"
+    "fastify-static": "^4.2.4"
   }
 }
